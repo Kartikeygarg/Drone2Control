@@ -8,7 +8,9 @@ import android.graphics.Bitmap;
         import android.support.v7.app.AppCompatActivity;
         import android.os.Bundle;
         import android.util.Log;
-        import android.view.View;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
         import android.widget.Button;
         import android.widget.ImageView;
 
@@ -19,18 +21,20 @@ import android.graphics.Bitmap;
         import java.io.PrintStream;
         import java.net.Socket;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnTouchListener {
 
     ImageView drawringIV;
     Bitmap bitmap;
     double init_lat, init_long, init_height;
+    double curr_lat, curr_long, curr_height;
     Button b1;
     Socket socket = null;
     int max_horizontal_angle = 60, max_vertical_angle = 45;
     boolean first_location = true;
-    int image_width =1199, image_height = 720;
+    int image_width = 1199, image_height = 720;
     Bitmap newBitmap;
-    float aa=400,bb=400;
+    float aa = 400, bb = 400;
+    GestureDetector gdt;
 
 
     @Override
@@ -39,14 +43,15 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         drawringIV = (ImageView) findViewById(R.id.drawringIV);
         b1 = (Button) findViewById(R.id.btn1);
-
+        gdt = new GestureDetector(new GestureListener());
 
         b1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
-                SendReceiveAsyncTask obj = new SendReceiveAsyncTask("10.0.1.39",4466);
-                obj.execute();
+                SendReceiveAsyncTask obj = new SendReceiveAsyncTask("192.168.1.6", 4450);
+                obj.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                drawringIV.setOnTouchListener(MainActivity.this);
                /* Bitmap newBitmap = Bitmap.createBitmap(bitmap);
                 Canvas canvas = new Canvas(newBitmap);
                 Paint paint = new Paint();
@@ -55,10 +60,6 @@ public class MainActivity extends AppCompatActivity {
                 drawringIV.setImageBitmap(newBitmap);*/
             }
         });
-
-
-
-
 
 
     }
@@ -95,46 +96,68 @@ public class MainActivity extends AppCompatActivity {
         return latitude - init_lat;
     }
 
-    public float get_horizontal_disp(double latitude ,double longitude) {
-        double latitudeCircumference = 40075160 * Math.cos(init_lat * Math.PI /180);
+    public float get_horizontal_disp(double latitude, double longitude) {
+        double latitudeCircumference = 40075160 * Math.cos(init_lat * Math.PI / 180);
         double long_disp = (longitude - init_long) * latitudeCircumference / 360;
         double curr_depth = (latitude - init_lat) * 40008000 / 360;
         double max_disp = curr_depth * Math.tan(max_horizontal_angle);
-        double disp =  (long_disp/max_disp)* (drawringIV.getWidth()/2);
+        double disp = (long_disp / max_disp) * (drawringIV.getWidth() / 2);
 
-        return (float) ((image_width/2)+disp);
+        return (float) ((image_width / 2) + disp);
     }
 
-    public float get_vertical_disp(double latitude, double altitude)
-    {
+    public float get_vertical_disp(double latitude, double altitude) {
 
         double vert_disp = (altitude - init_height);
         double curr_depth = (latitude - init_lat) * 40008000 / 360;
         double max_disp = curr_depth * Math.tan(max_vertical_angle);
-        double disp =  (vert_disp/max_disp)* (drawringIV.getHeight()*0.9);
+        double disp = (vert_disp / max_disp) * (drawringIV.getHeight() * 0.9);
 
-        return (float) ((image_height*0.9) - disp);
+        return (float) ((image_height * 0.9) - disp);
 
     }
 
-    public void drawDrone(float horiz_disp , float vert_disp)
-    {
-        aa=horiz_disp;
-        bb= vert_disp;
+    public double getLatitudeOffset(double latitude, double offset) {
+        double R = 6378137;
+        double new_latitude = latitude + ((offset / R) * (180 / Math.PI));
+        return new_latitude;
+    }
+
+    private double getLongitudeOffset(double longitude, double offset) {
+        double R = 6378137;
+        double new_longitude = longitude + (offset / R) * (180 / Math.PI) / Math.cos(longitude * Math.PI / 180);
+        return new_longitude;
+
+    }
+
+    /* private double getlongitudeoffset(double longitude, double offset) {
+         double R = 6378137;
+         double new_longitude = longitude + (offset/R) * ( 180 /Math.PI) / Math.cos(longitude * Math.PI/180);
+         return new_longitude;
+
+     }*/
+    public void drawDrone(float horiz_disp, float vert_disp) {
+        aa = horiz_disp;
+        bb = vert_disp;
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 newBitmap = Bitmap.createBitmap(bitmap);
                 Canvas canvas = new Canvas(newBitmap);
                 Paint paint = new Paint();
-                paint.setColor(Color.rgb(255,0 , 0));
-                canvas.drawCircle( aa,  bb, 20, paint);
+                paint.setColor(Color.rgb(255, 0, 0));
+                canvas.drawCircle(aa, bb, 20, paint);
                 drawringIV.setImageBitmap(newBitmap);
             }
         });
 
     }
 
+    @Override
+    public boolean onTouch(View view, MotionEvent motionEvent) {
+        gdt.onTouchEvent(motionEvent);
+        return true;
+    }
 
 
     public class SendReceiveAsyncTask extends AsyncTask<Void, Void, Void> {
@@ -146,7 +169,6 @@ public class MainActivity extends AppCompatActivity {
             dstAddress = addr;
             dstPort = port;
             //this.cmd = cmd;
-
         }
 
 
@@ -159,27 +181,24 @@ public class MainActivity extends AppCompatActivity {
                 PrintStream PS = new PrintStream(socket.getOutputStream());
                 BufferedReader is = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PS.println("SEND");
-                while(true) {
+                while (true) {
                     String message = is.readLine();
-                    if(first_location)
-                    {
+                    if (first_location) {
                         first_location = false;
-                        drawDrone(image_width/2, (float) (image_height*0.9));
+                        drawDrone(image_width / 2, (float) (image_height * 0.9));
                         String a[] = message.split(":");
-                        init_lat =Double.parseDouble(a[1]);
-                        init_long =Double.parseDouble(a[3]);
-                        init_height =Double.parseDouble(a[5]);
-                        drawDrone(get_horizontal_disp(init_lat,init_long),get_vertical_disp(init_lat,init_height));
+                        init_lat = Double.parseDouble(a[1]);
+                        init_long = Double.parseDouble(a[3]);
+                        init_height = Double.parseDouble(a[5]);
+                        // drawDrone(get_horizontal_disp(init_lat,init_long),get_vertical_disp(init_lat,init_height));
                         PS.println("SEND");
 
-                    }
-                    else
-                    {
+                    } else {
                         String a[] = message.split(":");
-                        double cur_lat =Double.parseDouble(a[1]);
-                        double cur_long=Double.parseDouble(a[3]);
-                        double cur_height =Double.parseDouble(a[5]);
-                        drawDrone(get_horizontal_disp(cur_lat,cur_long),get_vertical_disp(cur_lat,cur_height));
+                        curr_lat = Double.parseDouble(a[1]);
+                        curr_long = Double.parseDouble(a[3]);
+                        curr_height = Double.parseDouble(a[5]);
+                        drawDrone(get_horizontal_disp(curr_lat, curr_long), get_vertical_disp(curr_lat, curr_height));
                         try {
                             Thread.sleep(2000);
                         } catch (InterruptedException e) {
@@ -191,7 +210,6 @@ public class MainActivity extends AppCompatActivity {
                 }
 
 
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -200,7 +218,66 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private class GestureListener extends GestureDetector.SimpleOnGestureListener {
+        @Override
+        public boolean onDown(MotionEvent event) {
+            float xPer = (event.getX() - (image_width / 2)) / (image_width / 2);
+            float yPer = (float) (((image_height * 0.9) - event.getY()) / (image_height * 0.9));
+
+            double curr_depth = (curr_lat - init_lat) * 40008000 / 360;
+            double max_hori_disp = curr_depth * Math.tan(max_horizontal_angle);
+            double max_vert_disp = curr_depth * Math.tan(max_vertical_angle);
+
+            double new_hori_disp = max_hori_disp * xPer;
+            double new_vert_disp = max_vert_disp * yPer;
+            /*double latitudeCircumference = 40075160 * Math.cos(init_lat * Math.PI /180);
+            double new_longitude = init_long + ((new_hori_disp *360)/ latitudeCircumference );*/
+
+            final double new_longitude = getLongitudeOffset(init_long, new_hori_disp);
+            //  double new_latitude = getLatitudeOffset( init_lat , new_hori_disp);
+            final double new_height = yPer * max_vert_disp;
+            SendAsyncTask obj = new SendAsyncTask(curr_lat, new_longitude, new_height);
+            obj.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+           /* AsyncTask.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        PrintStream PS = new PrintStream(socket.getOutputStream());
+                        PS.println("Latitude:" + curr_lat + ":Longitude:" + new_longitude + ":Height:" + new_height + ":\n");
+                        PS.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });*/
+
+            return true;
+        }
+    }
+
+    public class SendAsyncTask extends AsyncTask<Void, Void, Void> {
+
+        double new_lat, new_long,new_height;
+
+        SendAsyncTask(double new_lat,double new_long,double new_height) {
+           this.new_height= new_height;
+           this.new_lat= new_lat;
+           this.new_long= new_long;
+        }
 
 
+        @Override
+        protected Void doInBackground(Void... voids) {
+            try {
+                PrintStream PS = new PrintStream(socket.getOutputStream());
+                PS.println("Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n");
+                PS.close();
 
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+    }
 }
