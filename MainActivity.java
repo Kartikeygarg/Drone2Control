@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     double curr_lat, curr_long, curr_height;
     Button b1;
     Socket socket = null;
-    int max_horizontal_angle = 70, max_vertical_angle = 35;
+    int max_horizontal_angle = 70, max_vertical_angle = 50;
     boolean first_location = true;
     int image_width = 1199, image_height = 720;
     Bitmap newBitmap;
@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 SendReceiveAsyncTask obj = new SendReceiveAsyncTask(editTextAddress.getText().toString(),Integer.parseInt(editTextPort.getText().toString()));
                 obj.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
                 drawringIV.setOnTouchListener(MainActivity.this);
-               /* Bitmap newBitmap = Bitmap.createBitmap(bitmap);
+                /* Bitmap newBitmap = Bitmap.createBitmap(bitmap);
                 Canvas canvas = new Canvas(newBitmap);
                 Paint paint = new Paint();
                 paint.setColor(Color.rgb(255, 0, 0));

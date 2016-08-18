@@ -28,23 +28,24 @@ import java.net.Socket;
 
 public class SecondActivity extends AppCompatActivity implements View.OnTouchListener {
 
-    ImageView drawringIV;
-    Bitmap bitmap;
+    ImageView frontIV , topIV;
+    Bitmap bitmap_front, bitmap_top;
     double init_lat, init_long, init_height;
     double curr_lat, curr_long, curr_height;
-    Button b1;
+    Button b1, btn_view;
     Socket socket = null;
-    int max_horizontal_angle = 70, max_vertical_angle = 35;
+    int max_horizontal_angle = 70, max_vertical_angle = 50, max_depth = 200;
     boolean first_location = true;
     int image_width = 1199, image_height = 720;
     Bitmap newBitmap;
-    float aa = 400, bb = 400;
+    float aa = 400, bb = 400 , cc=400;
     GestureDetector gdt;
     PrintStream PS;
     byte send_array[], input_array[];
     OutputStream out;
     String dstAddress;
     int dstPort;
+    boolean top_view =false, front_view = true;
     EditText editTextAddress, editTextPort;
 
 
@@ -53,8 +54,10 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_second);
-        drawringIV = (ImageView) findViewById(R.id.drawringIV);
+        frontIV = (ImageView) findViewById(R.id.frontIV);
+        topIV = (ImageView) findViewById(R.id.topIV);
         b1 = (Button) findViewById(R.id.btn1);
+        btn_view = (Button) findViewById(R.id.btn_view);
         gdt = new GestureDetector(new GestureListener());
         editTextAddress = (EditText)findViewById(R.id.address);
         editTextAddress.setText("192.168.1.6");
@@ -66,13 +69,31 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
 
                 SendReceiveAsyncTask obj = new SendReceiveAsyncTask(editTextAddress.getText().toString(),Integer.parseInt(editTextPort.getText().toString()));
                 obj.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-                drawringIV.setOnTouchListener(SecondActivity.this);
-               /* Bitmap newBitmap = Bitmap.createBitmap(bitmap);
-                Canvas canvas = new Canvas(newBitmap);
-                Paint paint = new Paint();
-                paint.setColor(Color.rgb(255, 0, 0));
-                canvas.drawCircle(drawringIV.getWidth() / 2, (float) (drawringIV.getHeight() * 0.9), 20, paint);
-                drawringIV.setImageBitmap(newBitmap);*/
+                frontIV.setOnTouchListener(SecondActivity.this);
+                b1.setVisibility(View.GONE);
+            }
+        });
+        btn_view.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                if(front_view) {
+                    btn_view.setText("TOP");
+                    front_view = false;
+                    top_view = true;
+                    frontIV.setVisibility(View.GONE);
+                    topIV.setVisibility(View.VISIBLE);
+
+                }
+                else
+                {
+                    btn_view.setText("FRONT");
+                    front_view = true;
+                    top_view = false;
+                    frontIV.setVisibility(View.VISIBLE);
+                    topIV.setVisibility(View.GONE);
+
+                }
             }
         });
 
@@ -88,24 +109,52 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
 
-        image_width = drawringIV.getWidth();
-        image_height = drawringIV.getHeight();
+        image_width = frontIV.getWidth();
+        image_height = frontIV.getHeight();
 
-        bitmap = Bitmap.createBitmap((int) getWindowManager()
+        bitmap_front = Bitmap.createBitmap((int) getWindowManager()
                 .getDefaultDisplay().getWidth(), (int) getWindowManager()
                 .getDefaultDisplay().getHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
+        Canvas canvas_front = new Canvas(bitmap_front);
 
         Paint paint = new Paint();
-        paint.setColor(Color.rgb(0, 0, 0));
+        paint.setColor(Color.rgb(140, 0, 0));
         paint.setAlpha(80);
         paint.setStrokeWidth(2);
-        Log.i("TAG", "width : " + drawringIV.getWidth() + " Height : " + drawringIV.getHeight());
-        canvas.drawLine(0, (float) (drawringIV.getHeight() * 0.9), drawringIV.getWidth(), (float) (drawringIV.getHeight() * 0.9), paint);
-        canvas.drawLine(drawringIV.getWidth() / 2, 0, drawringIV.getWidth() / 2, drawringIV.getHeight(), paint);
-       /* paint.setColor(Color.rgb(255 , 0, 0));
-        canvas.drawCircle(drawringIV.getWidth() /2, (float) (drawringIV.getHeight()*0.9), 20, paint);*/
-        drawringIV.setImageBitmap(bitmap);
+        Log.i("TAG", "width : " + frontIV.getWidth() + " Height : " + frontIV.getHeight());
+        canvas_front.drawLine(0, (float) (frontIV.getHeight() * 0.9), frontIV.getWidth(), (float) (frontIV.getHeight() * 0.9), paint);
+        canvas_front.drawLine(frontIV.getWidth() / 2, 0, frontIV.getWidth() / 2, frontIV.getHeight(), paint);
+        paint.setTextSize(26);
+        canvas_front.drawText("West", 20, (float) (frontIV.getHeight() * 0.9)-5 , paint);
+        canvas_front.drawText("East", frontIV.getWidth() - 75, (float) (frontIV.getHeight() * 0.9)-5, paint);
+        canvas_front.save();
+        canvas_front.rotate((float)  270 , frontIV.getWidth()/2 -10, 100);
+        canvas_front.drawText("Height",frontIV.getWidth()/2 -10 ,100, paint);
+        canvas_front.restore();
+        frontIV.setImageBitmap(bitmap_front);
+
+        bitmap_top = Bitmap.createBitmap((int) getWindowManager()
+                .getDefaultDisplay().getWidth(), (int) getWindowManager()
+                .getDefaultDisplay().getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas_top = new Canvas(bitmap_top);
+
+        Paint paint_top = new Paint();
+        paint_top.setColor(Color.rgb(0, 140, 0));
+        paint_top.setAlpha(80);
+        paint_top.setStrokeWidth(2);
+        Log.i("TAG", "width : " + topIV.getWidth() + " Height : " +topIV.getHeight());
+        canvas_top.drawLine(0, (float) (topIV.getHeight() * 0.8), topIV.getWidth(), (float) (topIV.getHeight() * 0.8), paint_top);
+        canvas_top.drawLine(topIV.getWidth() / 2, 0, topIV.getWidth() / 2, topIV.getHeight(), paint_top);
+
+        paint_top.setTextSize(26);
+        canvas_top.drawText("West", 20, (float) (topIV.getHeight() * 0.8)-5 , paint_top);
+        canvas_top.drawText("East", topIV.getWidth() - 75, (float) (topIV.getHeight() * 0.8)-5, paint_top);
+        canvas_top.save();
+        canvas_top.rotate((float)  270 ,topIV.getWidth()/2 -10, 100);
+        canvas_top.drawText("North",topIV.getWidth()/2 -10 ,100, paint);
+        canvas_top.restore();
+        topIV.setImageBitmap(bitmap_top);
+        topIV.setVisibility(View.GONE);
     }
 
     public double getlongitudeoffset(double longitude) {
@@ -121,7 +170,7 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
         double long_disp = (longitude - init_long) * latitudeCircumference / 360;
         double curr_depth = (latitude - init_lat) * 40008000 / 360;
         double max_disp = curr_depth * Math.tan(max_horizontal_angle);
-        double disp = (long_disp / max_disp) * (drawringIV.getWidth() / 2);
+        double disp = (long_disp / max_disp) * (frontIV.getWidth() / 2);
 
         return (float) ((image_width / 2) + disp);
     }
@@ -131,7 +180,7 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
         double vert_disp = (altitude - init_height);
         double curr_depth = (latitude - init_lat) * 40008000 / 360;
         double max_disp = curr_depth * Math.tan(max_vertical_angle);
-        double disp = (vert_disp / max_disp) * (drawringIV.getHeight() * 0.9);
+        double disp = (vert_disp / max_disp) * (frontIV.getHeight() * 0.9);
 
         return (float) ((image_height * 0.9) - disp);
 
@@ -159,18 +208,35 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
          return new_longitude;
 
      }*/
-    public void drawDrone(float horiz_disp, float vert_disp) {
+    public void drawDroneFront(float horiz_disp, float vert_disp) {
         aa = horiz_disp;
         bb = vert_disp;
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                newBitmap = Bitmap.createBitmap(bitmap);
+                newBitmap = Bitmap.createBitmap(bitmap_front);
                 Canvas canvas = new Canvas(newBitmap);
                 Paint paint = new Paint();
                 paint.setColor(Color.rgb(255, 0, 0));
                 canvas.drawCircle(aa, bb, 20, paint);
-                drawringIV.setImageBitmap(newBitmap);
+                frontIV.setImageBitmap(newBitmap);
+            }
+        });
+
+    }
+
+    public void drawDroneTop(float horiz_disp, float depth_disp) {
+        aa = horiz_disp;
+        cc = depth_disp;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                newBitmap = Bitmap.createBitmap(bitmap_front);
+                Canvas canvas = new Canvas(newBitmap);
+                Paint paint = new Paint();
+                paint.setColor(Color.rgb(0, 255, 0));
+                canvas.drawCircle(aa, bb, 20, paint);
+                frontIV.setImageBitmap(newBitmap);
             }
         });
 
@@ -216,7 +282,7 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
 
                     if (first_location) {
                         first_location = false;
-                        drawDrone(image_width / 2, (float) (image_height * 0.9));
+                        drawDroneFront(image_width / 2, (float) (image_height * 0.9));
                         String a[] = message.split(":");
                         init_lat = Double.parseDouble(a[1]);
                         init_long = Double.parseDouble(a[3]);
@@ -231,10 +297,10 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
                         curr_long = Double.parseDouble(a[3]);
                         curr_height = Double.parseDouble(a[5]);
                         if(curr_lat==init_lat && curr_long==init_long && curr_height==init_height)
-                            drawDrone(image_width / 2, (float) (image_height * 0.9));
+                            drawDroneFront(image_width / 2, (float) (image_height * 0.9));
 
                         else
-                            drawDrone(get_horizontal_disp(curr_lat, curr_long), get_vertical_disp(curr_lat, curr_height));
+                            drawDroneFront(get_horizontal_disp(curr_lat, curr_long), get_vertical_disp(curr_lat, curr_height));
                         try {
                             Thread.sleep(2000);
                         } catch (InterruptedException e) {
