@@ -8,17 +8,21 @@ import android.graphics.Bitmap;
         import android.support.v7.app.AppCompatActivity;
         import android.os.Bundle;
         import android.util.Log;
-import android.view.GestureDetector;
-import android.view.MotionEvent;
-import android.view.View;
+        import android.view.GestureDetector;
+        import android.view.MotionEvent;
+        import android.view.View;
         import android.widget.Button;
-        import android.widget.ImageView;
+import android.widget.EditText;
+import android.widget.ImageView;
 
-        import java.io.BufferedReader;
+import org.apache.commons.io.IOUtils;
+
+import java.io.BufferedReader;
         import java.io.IOException;
         import java.io.InputStream;
         import java.io.InputStreamReader;
-        import java.io.PrintStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
         import java.net.Socket;
 
 public class MainActivity extends AppCompatActivity implements View.OnTouchListener {
@@ -29,12 +33,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     double curr_lat, curr_long, curr_height;
     Button b1;
     Socket socket = null;
-    int max_horizontal_angle = 60, max_vertical_angle = 45;
+    int max_horizontal_angle = 70, max_vertical_angle = 35;
     boolean first_location = true;
     int image_width = 1199, image_height = 720;
     Bitmap newBitmap;
     float aa = 400, bb = 400;
     GestureDetector gdt;
+    PrintStream PS;
+    byte send_array[], input_array[];
+    OutputStream out;
+    String dstAddress;
+    int dstPort;
+    EditText editTextAddress, editTextPort;
+
 
 
     @Override
@@ -44,12 +55,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         drawringIV = (ImageView) findViewById(R.id.drawringIV);
         b1 = (Button) findViewById(R.id.btn1);
         gdt = new GestureDetector(new GestureListener());
-
+        editTextAddress = (EditText)findViewById(R.id.address);
+        editTextAddress.setText("192.168.1.6");
+        editTextPort = (EditText)findViewById(R.id.port);
+        editTextPort.setText("4444");
         b1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
-                SendReceiveAsyncTask obj = new SendReceiveAsyncTask("192.168.1.6", 4450);
+                SendReceiveAsyncTask obj = new SendReceiveAsyncTask(editTextAddress.getText().toString(),Integer.parseInt(editTextPort.getText().toString()));
                 obj.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
                 drawringIV.setOnTouchListener(MainActivity.this);
                /* Bitmap newBitmap = Bitmap.createBitmap(bitmap);
@@ -64,6 +78,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     }
 
+    /*@Override
+    public void onDestroy() {
+        super.onDestroy();
+
+    }*/
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
@@ -119,14 +138,17 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     public double getLatitudeOffset(double latitude, double offset) {
         double R = 6378137;
+        double latitudeCircumference = 40075160 * Math.cos(init_lat * Math.PI / 180);
         double new_latitude = latitude + ((offset / R) * (180 / Math.PI));
         return new_latitude;
     }
 
     private double getLongitudeOffset(double longitude, double offset) {
         double R = 6378137;
-        double new_longitude = longitude + (offset / R) * (180 / Math.PI) / Math.cos(longitude * Math.PI / 180);
-        return new_longitude;
+        double latitudeCircumference = 40075160 * Math.cos(init_lat * Math.PI / 180);
+        double new_long  = init_long + (offset *360 / latitudeCircumference);
+        //double new_longitude = longitude + (offset / R) * (180 / Math.PI) / Math.cos(longitude * Math.PI / 180);
+        return new_long;
 
     }
 
@@ -177,12 +199,20 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
             try {
                 socket = new Socket(dstAddress, dstPort);
-                //InputStream in = socket.getInputStream();
-                PrintStream PS = new PrintStream(socket.getOutputStream());
+                InputStream in = socket.getInputStream();
+                out = socket.getOutputStream();
+                PS = new PrintStream(socket.getOutputStream());
                 BufferedReader is = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PS.println("SEND");
                 while (true) {
-                    String message = is.readLine();
+                 // String message = is.readLine();
+                    send_array = new byte[1024];
+                    input_array = new byte[1024];
+
+
+                    IOUtils.read(in, input_array);
+                    String message = new String(input_array, "UTF-8");
+
                     if (first_location) {
                         first_location = false;
                         drawDrone(image_width / 2, (float) (image_height * 0.9));
@@ -191,21 +221,28 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         init_long = Double.parseDouble(a[3]);
                         init_height = Double.parseDouble(a[5]);
                         // drawDrone(get_horizontal_disp(init_lat,init_long),get_vertical_disp(init_lat,init_height));
-                        PS.println("SEND");
+
+                        // PS.println("SEND");
 
                     } else {
                         String a[] = message.split(":");
                         curr_lat = Double.parseDouble(a[1]);
                         curr_long = Double.parseDouble(a[3]);
                         curr_height = Double.parseDouble(a[5]);
-                        drawDrone(get_horizontal_disp(curr_lat, curr_long), get_vertical_disp(curr_lat, curr_height));
+                        if(curr_lat==init_lat && curr_long==init_long && curr_height==init_height)
+                            drawDrone(image_width / 2, (float) (image_height * 0.9));
+
+                        else
+                            drawDrone(get_horizontal_disp(curr_lat, curr_long), get_vertical_disp(curr_lat, curr_height));
                         try {
                             Thread.sleep(2000);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
-                        PS.println("SEND");
+                       // PS.println("SEND");
                     }
+                    System.arraycopy(toByteArray("SEND"),0,send_array,0,4);
+                    out.write(send_array,0,send_array.length);
 
                 }
 
@@ -216,6 +253,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             return null;
         }
 
+    }
+
+    byte[] toByteArray(String value) {
+        return new byte[] {
+                (byte)(value.charAt(0) ),
+                (byte)(value.charAt(1) ),
+                (byte)(value.charAt(2)),
+                (byte)value.charAt(3)   };
     }
 
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
@@ -235,7 +280,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
             final double new_longitude = getLongitudeOffset(init_long, new_hori_disp);
             //  double new_latitude = getLatitudeOffset( init_lat , new_hori_disp);
-            final double new_height = yPer * max_vert_disp;
+            final double new_height = init_height  + (yPer * max_vert_disp);
             SendAsyncTask obj = new SendAsyncTask(curr_lat, new_longitude, new_height);
             obj.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
            /* AsyncTask.execute(new Runnable() {
@@ -268,15 +313,17 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
         @Override
         protected Void doInBackground(Void... voids) {
+         //   PS.println("Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n");
+            String str = "Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n";
+            byte dtn_array[] = new byte[1024];
+            System.arraycopy(str.getBytes(),0,dtn_array,0,str.length());
             try {
-                PrintStream PS = new PrintStream(socket.getOutputStream());
-                PS.println("Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n");
-                PS.close();
-
+                out.write(dtn_array,0,dtn_array.length);
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
+            Log.i("TAG","Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n");
             return null;
         }
     }
