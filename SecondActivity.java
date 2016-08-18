@@ -1,31 +1,32 @@
 package com.example.defenselabs.dronecontrol;
 
 import android.graphics.Bitmap;
-        import android.graphics.Canvas;
-        import android.graphics.Color;
-        import android.graphics.Paint;
-        import android.os.AsyncTask;
-        import android.support.v7.app.AppCompatActivity;
-        import android.os.Bundle;
-        import android.util.Log;
-        import android.view.GestureDetector;
-        import android.view.MotionEvent;
-        import android.view.View;
-        import android.widget.Button;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.os.AsyncTask;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 
 import org.apache.commons.io.IOUtils;
 
 import java.io.BufferedReader;
-        import java.io.IOException;
-        import java.io.InputStream;
-        import java.io.InputStreamReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
-        import java.net.Socket;
+import java.net.Socket;
 
-public class MainActivity extends AppCompatActivity implements View.OnTouchListener {
+
+public class SecondActivity extends AppCompatActivity implements View.OnTouchListener {
 
     ImageView drawringIV;
     Bitmap bitmap;
@@ -51,7 +52,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_second);
         drawringIV = (ImageView) findViewById(R.id.drawringIV);
         b1 = (Button) findViewById(R.id.btn1);
         gdt = new GestureDetector(new GestureListener());
@@ -65,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
                 SendReceiveAsyncTask obj = new SendReceiveAsyncTask(editTextAddress.getText().toString(),Integer.parseInt(editTextPort.getText().toString()));
                 obj.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-                drawringIV.setOnTouchListener(MainActivity.this);
+                drawringIV.setOnTouchListener(SecondActivity.this);
                /* Bitmap newBitmap = Bitmap.createBitmap(bitmap);
                 Canvas canvas = new Canvas(newBitmap);
                 Paint paint = new Paint();
@@ -205,7 +206,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 BufferedReader is = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PS.println("SEND");
                 while (true) {
-                 // String message = is.readLine();
+                    // String message = is.readLine();
                     send_array = new byte[1024];
                     input_array = new byte[1024];
 
@@ -234,15 +235,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
                         else
                             drawDrone(get_horizontal_disp(curr_lat, curr_long), get_vertical_disp(curr_lat, curr_height));
-
-                        Log.i("TAG RECEIVING","Latitude:" + curr_lat + ":Longitude:" + curr_long + ":Height:" + curr_height + ":\n");
-
                         try {
                             Thread.sleep(2000);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
-                       // PS.println("SEND");
+                        // PS.println("SEND");
                     }
                     System.arraycopy(toByteArray("SEND"),0,send_array,0,4);
                     out.write(send_array,0,send_array.length);
@@ -283,22 +281,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
             final double new_longitude = getLongitudeOffset(init_long, new_hori_disp);
             //  double new_latitude = getLatitudeOffset( init_lat , new_hori_disp);
-            final double new_height =  (yPer * max_vert_disp);
-            //final double new_height = init_height  + (yPer * max_vert_disp);
+            final double new_height = init_height  + (yPer * max_vert_disp);
             SendAsyncTask obj = new SendAsyncTask(curr_lat, new_longitude, new_height);
             obj.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-           /* AsyncTask.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        PrintStream PS = new PrintStream(socket.getOutputStream());
-                        PS.println("Latitude:" + curr_lat + ":Longitude:" + new_longitude + ":Height:" + new_height + ":\n");
-                        PS.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            });*/
 
             return true;
         }
@@ -309,15 +294,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         double new_lat, new_long,new_height;
 
         SendAsyncTask(double new_lat,double new_long,double new_height) {
-           this.new_height= new_height;
-           this.new_lat= new_lat;
-           this.new_long= new_long;
+            this.new_height= new_height;
+            this.new_lat= new_lat;
+            this.new_long= new_long;
         }
 
 
         @Override
         protected Void doInBackground(Void... voids) {
-         //   PS.println("Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n");
+            //   PS.println("Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n");
             String str = "Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n";
             byte dtn_array[] = new byte[1024];
             System.arraycopy(str.getBytes(),0,dtn_array,0,str.length());
@@ -327,7 +312,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 e.printStackTrace();
             }
 
-            Log.i("TAG SENDING","Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n");
+            Log.i("TAG","Latitude:" + new_lat + ":Longitude:" + new_long + ":Height:" + new_height + ":\n");
             return null;
         }
     }
