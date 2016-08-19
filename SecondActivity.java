@@ -417,7 +417,7 @@ public class SecondActivity extends AppCompatActivity implements View.OnTouchLis
             try {
                 InputStream in = new java.net.URL(urldisplay).openStream();
                 bitmap_top = BitmapFactory.decodeStream(in);
-                //
+                //d
 
 
             } catch (Exception e) {
